@@ -7,19 +7,115 @@ output:
 
 
 ## Loading and preprocessing the data
+First, the required packages are loaded.
+```{r}
+library(dplyr)
+library(ggplot2)
+```
 
+Data must be present in the working directory. Headers are desired, but the date 
+field should not be interpreted as a categorical variable at this point.
+```{r}
+activity <- read.csv("activity.csv", stringsAsFactors = FALSE)
+```
+
+The date field needs converting.
+```{r}
+activity$date <- as.Date(activity$date, format = "%Y-%m-%d")
+```
 
 
 ## What is mean total number of steps taken per day?
+To plot the histogram, the sum of steps per day is calculated. The histogram 
+binwidth is calculated using the Freedman-Diaconis rule
 
+```{r histogramNoNA}
+act_summ <- activity%>%
+group_by(date) %>%
+summarise(steps = sum(steps, na.rm = T))
 
+bw <- with(act_summ, diff(range(steps)) / (2 * IQR(steps) / length(steps)^1/3))
+ggplot() + geom_histogram(aes(act_summ$steps), binwidth = bw)
+```
+
+The daily mean is:
+
+```{r dailymean}
+mean(act_summ$steps)
+```
 
 ## What is the average daily activity pattern?
 
+```{r meanperday}
+act_int <- activity %>%
+group_by(interval) %>%
+summarise(ave_steps = mean(steps, na.rm = T))
+```
 
+This plot does not take into account the problem with interval labels
+```{r}
+act_int_gg <- ggplot(act_int, aes(interval, ave_steps))
+act_int_gg +geom_line()
+```
 
 ## Imputing missing values
+Calculate the total number of NA values recorded for steps
+```{r}
+sum(is.na(activity$steps))
+```
 
+By analysing the total number of NAs per day we can see that whole days are 
+missing, not individual values per day. (Each day contains 288 intervals.)
+```{r}
+act_days <- activity %>%
+    group_by(date) %>%
+    summarise(steps = sum(is.na(steps))) %>%
+    mutate(day = weekdays(date))
 
+act_days[act_days$steps != 0 & act_days$steps != 288 ,]
+```
+
+There is no obvious pattern to the days in which no measurements were made
+
+```{r}
+act_days[act_days$steps == 288,]
+```
+
+There is no indication of what may have caused the loss of data on these 
+particular days, so the imputation strategy has to rely on data provided for 
+the other days. The variation over different intervals through each day argues 
+against using the daily mean as a gross over-estimate. An average for each 
+interval would be a better substitute. The median was chosen as it is less 
+influenced by outlying values.
+
+```{r imputeValues}
+int_meds <- tapply(activity$steps, activity$interval, median, na.rm=T)
+activity_imputed <- cbind(activity,medians = rep(int_meds,61))
+for(i in seq(along=activity_imputed$steps)) {
+    if(is.na(activity_imputed$steps[i])) {
+        activity_imputed$steps[i] <- activity_imputed$medians[i]
+    }
+}
+```
+
+```{r histogramImputed}
+act_summ_imputed <- activity_imputed%>%
+group_by(date) %>%
+summarise(steps = sum(steps, na.rm = T))
+
+#bw <- with(act_summ_imputed, diff(range(steps)) / (2 * IQR(steps) / length(steps)^1/3))
+ggplot() + geom_histogram(aes(act_summ_imputed$steps), binwidth = bw)
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+Needs work ...
+```{r}
+wkday <- c("Monday","Tuesday","Wednesday","Thursday","Friday")
+act_panels <- mutate(activity_imputed, day_type = ifelse(weekdays(date) %in% wkday, "Weekday", "Weekend"))
+act_panels$day_type <- as.factor(act_panels$day_type)
+```
+
+```{r}
+act_weekends <- act_panels[act_panels$day_type == "Weekend",]
+act_weekdays <- act_panels[act_panels$day_type == "Weekdays",]
