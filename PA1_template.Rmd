@@ -52,11 +52,16 @@ group_by(interval) %>%
 summarise(ave_steps = mean(steps, na.rm = T))
 ```
 
-This plot does not take into account the problem with interval labels
+Need to explain interval labels
 ```{r}
 act_int_gg <- ggplot(act_int, aes(interval, ave_steps))
 act_int_gg +geom_line()
 ```
+
+```{r}
+max_int <- act_int[max(act_int$ave_steps),"interval"][[1]]
+```
+
 
 ## Imputing missing values
 Calculate the total number of NA values recorded for steps
