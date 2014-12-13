@@ -18,7 +18,8 @@ categorical variable on reading.
 activity <- read.csv("activity.csv", stringsAsFactors = FALSE)
 ```
 
-It does need to be transformed though.
+It does need to be transformed though, as it will be used to compare different 
+days later in the analysis.
 
 ```r
 activity$date <- as.Date(activity$date, format = "%Y-%m-%d")
@@ -48,7 +49,8 @@ activity <- cbind(activity, int_times)
 
 ## What is mean total number of steps taken per day?
 To plot the histogram, the sum of steps per day is calculated. The histogram 
-binwidth is calculated using the Freedman-Diaconis rule.
+binwidth is set to 1000. This gives enough of a  breakdown of the frequency 
+distribution to allow detail to be seen.
 
 
 ```r
@@ -56,7 +58,7 @@ act_summ <- activity%>%
 group_by(date) %>%
 summarise(steps = sum(steps, na.rm = T))
 
-bw <- with(act_summ, diff(range(steps)) / (2 * IQR(steps) / length(steps)^1/3))
+bw <- 1000;
 hist_gg1 <- ggplot(act_summ, aes(steps))
 hist_gg1 + geom_histogram(binwidth = bw, colour = "darkgreen", fill = "white") + 
         labs(title = "Histogram of the number of steps taken per day
@@ -106,7 +108,8 @@ int_gg + geom_line() +
 
 ![](PA1_template_files/figure-html/plotDaily-1.png) 
 
-The maximum interval begins at 08:35:
+The 5-minute interval containing the maximum average number of steps begins at 
+08:35:
 
 ```r
 act_int[act_int$ave_steps == max(act_int$ave_steps),]
@@ -172,9 +175,10 @@ act_days[act_days$steps == 288,]
 There is no indication of what may have caused the loss of data on these 
 particular days, so the imputation strategy has to rely on data provided for 
 the other days. The variation over different intervals through each day argues 
-against using the daily mean, as this would be a gross over-estimate. The 
-average for each interval would be a better substitute. The median was chosen as 
-it is less influenced by outlying values.
+against using the daily mean, as this would be a gross over-estimate in a lot of 
+cases and risk skewing the analysis. Some average for each interval would be a 
+better substitute. The median was chosen as it is less influenced by outlying 
+values.
 
 
 ```r
@@ -187,15 +191,14 @@ for(i in seq(along=activity_imputed$steps)) {
 }
 ```
 
-With the missing values replaced by interval medians, the histogram is subtly 
-different:
+With the missing values replaced by interval medians, the frequency distribuion 
+changes slighly in the 0-300 bins.
 
 ```r
 act_summ_imputed <- activity_imputed%>%
 group_by(date) %>%
 summarise(steps = sum(steps, na.rm = T))
 
-bw <- with(act_summ_imputed, diff(range(steps)) / (2 * IQR(steps) / length(steps)^1/3))
 hist_gg2 <- ggplot(act_summ_imputed, aes(steps))
 hist_gg2 + geom_histogram(binwidth = bw, colour = "darkgreen", fill = "white") + 
         labs(title = "Histogram of the number of steps taken per day
@@ -227,7 +230,7 @@ median(act_summ_imputed$steps)
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
-A new factor is introduced todiscriminate between weekdays and weekends.
+A new factor is introduced to discriminate between weekdays and weekends.
 
 ```r
 wkday <- c("Monday","Tuesday","Wednesday","Thursday","Friday")
